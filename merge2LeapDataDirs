@@ -1,0 +1,125 @@
+#!/bin/sh
+
+# Merges two LeapMotion Directories into a new target diectory.
+# This script does not modify the original directories,
+# but does destoy the target directory.
+
+# structure
+# Input:		LeapMotion_1/gesture_dirs/individual_test_dir_0-k/tests
+# 			LeapMotion_2/gesture_dirs/individual_test_dir_0-n/tests
+#
+# Result:		LeapMotion_Target/set_of_all+gesture_dirs/individual_test_dir_0-(k+n)/tests
+#			This way we still can determine the individual gestures.
+#
+# Fri Nov 21 08:27:46 EST 2014/hpb
+
+PATH=/usr/bin:/bin:/sbin
+export PATH
+TARGET_DIR=LeapMotion_`date "+%Y_%m_%d_%H_%M_%S"`
+TARGET_DIR=LeapMotion_2014
+
+usage ()	# error message
+{
+	echo "Usage: `basename $0` LeapMotionDir_1 LeapMotion_dir_2"
+	if [ $# -eq 1 ]
+	then
+		echo "Usage: `basename $0` $1"
+	fi
+	
+	exit 1
+}
+testIfDirExist ()	# dir
+{
+	if [ ! -d "$1" ]
+	then
+		usage "$1 does not exist"
+	fi
+}
+testIfDirDoesNoExist ()	# dir
+{
+	if [ -d "$1" ]
+	then
+ 		usage "$1 does not exist"
+	fi
+}
+copyDirs () # from to $DIR_1/$i $TARGET_DIR/$i
+{
+	DIRS_TO_COPY=""
+		# echo From: $1 to $2
+	if [ -d $1 ]
+	then
+		findLowestNumberInFrom=`ls $1 | sort -n  | sed 's/ //g' | head -1`
+		DIRS_TO_COPY=`ls $1`
+	fi
+	if [ -d $2 ]
+	then
+		findHighestNumberInTop=`ls $2 | sort -nr | sed 's/ //g' | head -1`
+	fi
+		# echo Starting dir ="$findLowestNumberInFrom"=
+		# echo Starting dir ="$findHighestNumberInTop"=
+	if [ "$findHighestNumberInTop" == "" ]
+	then
+		findHighestNumberInTop=1		# dir is empty
+	fi
+		# echo DIRS_TO_COPY = $DIRS_TO_COPY
+	for dir in $DIRS_TO_COPY
+	do
+		# echo dir = $dir
+		# echo $1/$dir $2/$findHighestNumberInTop
+		if [ -d $1/$dir ]		# dir might not exist in all dirs
+		then
+			cp -r  $1/$dir $2/$findHighestNumberInTop
+		fi
+	
+		findHighestNumberInTop=`echo $findHighestNumberInTop + 1 | bc`
+	done
+# exit
+
+}
+verifyCopy () # 
+{
+echo verifying ...
+	src_md5=`find $TARGET_DIR -type f -exec cat {} \; | sort | md5`
+	target_md5=`find $DIR_1 $DIR_2 -type f -exec cat {} \; | sort | md5`
+	if [ !  $src_md5 == $target_md5 ]
+	then
+		echo "Merging from $DIR_1 DIR_2 failed"
+	fi
+}
+
+
+##### main #########
+
+# if [ $# != 2 ]
+if [ $# != 0 ]
+then
+	usage
+else
+	DIR_1="$1"
+	DIR_2="$2"
+	DIR_1="LeapData_2"		# delete later
+	DIR_2="LeapData_3"		# delete later
+fi
+
+# check if environment is acceptable
+testIfDirExist $DIR_1
+testIfDirExist $DIR_2
+
+rm -rf $TARGET_DIR
+testIfDirDoesNoExist $TARGET_DIR
+mkdir $TARGET_DIR
+testIfDirExist $TARGET_DIR
+
+DIRS=`( cd $DIR_1 && ls && cd .. && cd $DIR_2 && ls ) | sort -u`
+
+###### create all trget dirs
+for i in $DIRS
+do
+	# echo $i
+	mkdir $TARGET_DIR/$i			# target directory created
+	copyDirs $DIR_1/$i $TARGET_DIR/$i
+	copyDirs $DIR_2/$i $TARGET_DIR/$i
+done
+
+verifyCopy
+
