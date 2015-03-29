@@ -1,0 +1,15 @@
+#!/bin/sh
+
+2>&1 java -version | grep "1.[789]" > /dev/null
+if [ ! $? -eq 0 ]
+then
+	echo "Expected is JDK 1.7. or higher;  you are running:"
+	2>&1 java -version
+	echo "Bye"
+	exit 0
+fi
+
+LEAP_LIBRARY=/Users/hpb/SDK/LeapSDK/lib
+CLASSPATH=/Users/hpb/SDK/LeapSDK/lib/LeapJava.jar:.
+
+java  -Djava.library.path=$LEAP_LIBRARY -jar LeapMotionDataCol_fat.jar
